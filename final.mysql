@@ -1,0 +1,369 @@
+
+-- E-COMMERCE DATABASE SCHEMA + SAMPLE DATA + INDEXES + QUERIES
+
+
+-- Create Database
+CREATE DATABASE ecommerce_db;
+USE ecommerce_db;
+
+-- TABLES
+-- Users table
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login TIMESTAMP NULL
+);
+
+-- Customers table
+CREATE TABLE customers (
+    customer_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNIQUE,
+    company VARCHAR(100),
+    phone VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- Customer profiles
+CREATE TABLE customer_profiles (
+    profile_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT UNIQUE,
+    shipping_preference VARCHAR(50),
+    newsletter_subscribed BOOLEAN DEFAULT 0,
+    tax_id VARCHAR(20),
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+-- Addresses
+CREATE TABLE addresses (
+    address_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT,
+    label VARCHAR(50),
+    street VARCHAR(100),
+    city VARCHAR(50),
+    state VARCHAR(50),
+    postal_code VARCHAR(20),
+    country VARCHAR(50),
+    is_default BOOLEAN DEFAULT 0,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+-- Roles
+CREATE TABLE roles (
+    role_id INT AUTO_INCREMENT PRIMARY KEY,
+    role_name VARCHAR(50) UNIQUE,
+    description TEXT
+);
+
+-- User roles (Many-to-Many)
+CREATE TABLE user_roles (
+    user_id INT,
+    role_id INT,
+    PRIMARY KEY(user_id, role_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (role_id) REFERENCES roles(role_id)
+);
+
+-- Categories
+CREATE TABLE categories (
+    category_id INT AUTO_INCREMENT PRIMARY KEY,
+    category_name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT
+);
+
+-- Products
+CREATE TABLE products (
+    product_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_code VARCHAR(50) UNIQUE,
+    product_name VARCHAR(100) NOT NULL,
+    product_description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    sku VARCHAR(50) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Product-Categories (Many-to-Many)
+CREATE TABLE product_categories (
+    product_id INT,
+    category_id INT,
+    PRIMARY KEY(product_id, category_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+);
+
+-- Product Images
+CREATE TABLE product_images (
+    image_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
+    url VARCHAR(255),
+    alt_text VARCHAR(100),
+    is_primary BOOLEAN DEFAULT 0,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Suppliers
+CREATE TABLE suppliers (
+    supplier_id INT AUTO_INCREMENT PRIMARY KEY,
+    supplier_name VARCHAR(100),
+    contact_email VARCHAR(100),
+    phone VARCHAR(20)
+);
+
+-- Warehouses
+CREATE TABLE warehouses (
+    warehouse_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    location VARCHAR(100)
+);
+
+-- Inventory
+CREATE TABLE inventory (
+    inventory_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
+    warehouse_id INT,
+    supplier_id INT,
+    quantity INT,
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id),
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id)
+);
+
+-- Orders
+CREATE TABLE orders (
+    order_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT,
+    status ENUM('PENDING','PROCESSING','SHIPPED','DELIVERED','CANCELLED') NOT NULL,
+    shipping_address_id INT,
+    billing_address_id INT,
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_amount DECIMAL(10,2),
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (shipping_address_id) REFERENCES addresses(address_id),
+    FOREIGN KEY (billing_address_id) REFERENCES addresses(address_id)
+);
+
+-- Order Items
+CREATE TABLE order_items (
+    order_item_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT,
+    product_id INT,
+    quantity INT,
+    unit_price DECIMAL(10,2),
+    discount DECIMAL(5,2) DEFAULT 0,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Payments
+CREATE TABLE payments (
+    payment_id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT,
+    payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    payment_method ENUM('CARD','PAYPAL','BANK_TRANSFER','CASH') NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    transaction_reference VARCHAR(100),
+    status ENUM('PENDING','COMPLETED','FAILED'),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id)
+);
+
+-- Reviews
+CREATE TABLE reviews (
+    review_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
+    customer_id INT,
+    rating INT CHECK (rating BETWEEN 1 AND 5),
+    title VARCHAR(100),
+    body TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+-- INSERT SAMPLE DATA
+
+
+-- Users
+INSERT INTO users (username, email, password_hash, last_login) VALUES
+('john_doe', 'john@example.com', 'hash1', NOW()),
+('jane_smith', 'jane@example.com', 'hash2', NOW()),
+('emily_clark', 'emily@example.com', 'hash3', NOW()),
+('michael_brown', 'michael@example.com', 'hash4', NOW()),
+('linda_white', 'linda@example.com', 'hash5', NOW());
+
+-- Customers
+INSERT INTO customers (user_id, company, phone) VALUES
+(1, 'Doe Enterprises', '111111'),
+(2, NULL, '222222'),
+(3, 'Clark Media', '333333'),
+(4, 'Brown Supplies', '444444'),
+(5, NULL, '555555');
+
+-- Profiles
+INSERT INTO customer_profiles (customer_id, shipping_preference, newsletter_subscribed, tax_id) VALUES
+(1, 'STANDARD', 1, 'TAX001'),
+(2, 'EXPRESS', 1, 'TAX002'),
+(3, 'PICKUP', 0, 'TAX003'),
+(4, 'STANDARD', 1, 'TAX004'),
+(5, 'EXPRESS', 0, 'TAX005');
+
+-- Addresses
+INSERT INTO addresses (customer_id, label, street, city, state, postal_code, country, is_default) VALUES
+(1, 'Home', '123 Main St', 'Nairobi', 'Nairobi', '00100', 'Kenya', 1),
+(2, 'Work', '45 Queen St', 'London', 'London', 'SW1A', 'UK', 1),
+(3, 'Home', '78 King Rd', 'New York', 'NY', '10001', 'USA', 1),
+(4, 'Warehouse', '90 Industrial Ave', 'Berlin', 'BE', '10115', 'Germany', 0),
+(5, 'Home', '12 Garden St', 'Sydney', 'NSW', '2000', 'Australia', 1);
+
+-- Roles
+INSERT INTO roles (role_name, description) VALUES
+('ADMIN', 'System administrator'),
+('CUSTOMER', 'Regular customer'),
+('SUPPLIER', 'Supplier role'),
+('MANAGER', 'Store manager'),
+('DELIVERY', 'Delivery personnel');
+
+-- User roles
+INSERT INTO user_roles (user_id, role_id) VALUES
+(1, 2),
+(2, 2),
+(3, 2),
+(4, 4),
+(5, 2);
+
+-- Categories
+INSERT INTO categories (category_name, description) VALUES
+('Electronics', 'Electronic devices'),
+('Accessories', 'Gadgets and accessories'),
+('Home Appliances', 'Appliances for daily use'),
+('Books', 'All kinds of books'),
+('Clothing', 'Fashion and apparel');
+
+-- Products
+INSERT INTO products (product_code, product_name, product_description, price, sku) VALUES
+('P001', 'Laptop', '15-inch business laptop', 1200.00, 'SKU001'),
+('P002', 'Mouse', 'Wireless optical mouse', 25.00, 'SKU002'),
+('P003', 'Tablet', 'Android tablet 10-inch', 300.00, 'SKU003'),
+('P004', 'Keyboard', 'Mechanical keyboard', 80.00, 'SKU004'),
+('P005', 'Phone', 'Latest smartphone', 700.00, 'SKU005');
+
+-- Product-Categories
+INSERT INTO product_categories (product_id, category_id) VALUES
+(1, 1), (2, 2), (3, 1), (4, 2), (5, 1);
+
+-- Product Images
+INSERT INTO product_images (product_id, url, alt_text, is_primary) VALUES
+(1, 'img/laptop.jpg', 'Laptop Image', 1),
+(2, 'img/mouse.jpg', 'Mouse Image', 1),
+(3, 'img/tablet.jpg', 'Tablet Image', 1),
+(4, 'img/keyboard.jpg', 'Keyboard Image', 1),
+(5, 'img/phone.jpg', 'Phone Image', 1);
+
+-- Suppliers
+INSERT INTO suppliers (supplier_name, contact_email, phone) VALUES
+('TechSource Ltd', 'sales@techsource.com', '111-111-111'),
+('GadgetHub', 'info@gadgethub.com', '222-222-222'),
+('MegaSupplies', 'support@megasupplies.com', '333-333-333'),
+('BookWorld', 'orders@bookworld.com', '444-444-444'),
+('ClothMart', 'contact@clothmart.com', '555-555-555');
+
+-- Warehouses
+INSERT INTO warehouses (name, location) VALUES
+('Warehouse Nairobi', 'Nairobi, Kenya'),
+('Warehouse London', 'London, UK'),
+('Warehouse NY', 'New York, USA'),
+('Warehouse Berlin', 'Berlin, Germany'),
+('Warehouse Sydney', 'Sydney, Australia');
+
+-- Inventory
+INSERT INTO inventory (product_id, warehouse_id, supplier_id, quantity) VALUES
+(1, 1, 1, 20),
+(2, 1, 2, 100),
+(3, 2, 1, 50),
+(4, 3, 3, 40),
+(5, 4, 1, 30);
+
+-- Orders
+INSERT INTO orders (customer_id, status, shipping_address_id, billing_address_id, total_amount) VALUES
+(1, 'PENDING', 1, 1, 1225.00),
+(2, 'PROCESSING', 2, 2, 380.00),
+(3, 'DELIVERED', 3, 3, 700.00),
+(4, 'SHIPPED', 4, 4, 80.00),
+(5, 'CANCELLED', 5, 5, 25.00);
+
+-- Order Items
+INSERT INTO order_items (order_id, product_id, quantity, unit_price, discount) VALUES
+(1, 1, 1, 1200.00, 0),
+(1, 2, 1, 25.00, 0),
+(2, 3, 1, 300.00, 0),
+(2, 4, 1, 80.00, 0),
+(3, 5, 1, 700.00, 0);
+
+-- Payments
+INSERT INTO payments (order_id, payment_method, amount, transaction_reference, status) VALUES
+(1, 'CARD', 1225.00, 'TXN001', 'COMPLETED'),
+(2, 'PAYPAL', 380.00, 'TXN002', 'COMPLETED'),
+(3, 'CARD', 700.00, 'TXN003', 'COMPLETED'),
+(4, 'CASH', 80.00, 'TXN004', 'PENDING'),
+(5, 'BANK_TRANSFER', 25.00, 'TXN005', 'FAILED');
+
+-- Reviews
+INSERT INTO reviews (product_id, customer_id, rating, title, body) VALUES
+(1, 1, 5, 'Great laptop', 'Perfect for work.'),
+(2, 2, 4, 'Good mouse', 'Very smooth and lightweight.'),
+(3, 3, 3, 'Okay tablet', 'Battery life could be better.'),
+(4, 4, 5, 'Best keyboard', 'Excellent for typing.'),
+(5, 5, 4, 'Great phone', 'Fast and reliable.');
+
+
+-- INDEXES
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_customers_phone ON customers(phone);
+CREATE INDEX idx_addresses_city ON addresses(city);
+CREATE INDEX idx_roles_name ON roles(role_name);
+CREATE INDEX idx_categories_name ON categories(category_name);
+CREATE INDEX idx_products_code ON products(product_code);
+CREATE INDEX idx_suppliers_name ON suppliers(supplier_name);
+CREATE INDEX idx_warehouses_name ON warehouses(name);
+CREATE INDEX idx_orders_status ON orders(status);
+CREATE INDEX idx_payments_status ON payments(status);
+CREATE INDEX idx_reviews_rating ON reviews(rating);
+
+
+-- SELECT QUERIES (using joins and indexes)
+
+
+-- 1. Get all orders of a specific customer
+SELECT o.order_id, o.status, o.total_amount, o.order_date
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id
+WHERE c.phone = '111-222-333';
+
+-- 2. Get all products in the 'Electronics' category
+SELECT p.product_name, p.price, c.category_name
+FROM products p
+JOIN product_categories pc ON p.product_id = pc.product_id
+JOIN categories c ON pc.category_id = c.category_id
+WHERE c.category_name = 'Electronics';
+
+-- 3. Find inventory of a product across warehouses
+SELECT p.product_name, w.name AS warehouse, i.quantity
+FROM inventory i
+JOIN products p ON i.product_id = p.product_id
+JOIN warehouses w ON i.warehouse_id = w.warehouse_id
+WHERE p.product_code = 'P001';
+
+-- 4. Get customer details and their reviews
+SELECT cu.customer_id, u.username, r.product_id, r.rating, r.title
+FROM reviews r
+JOIN customers cu ON r.customer_id = cu.customer_id
+JOIN users u ON cu.user_id = u.user_id
+WHERE r.rating >= 4;
+
+-- 5. Show all payments that failed
+SELECT p.payment_id, p.order_id, p.amount, p.status
+FROM payments p
+WHERE p.status = 'FAILED';
